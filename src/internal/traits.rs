@@ -38,7 +38,6 @@ pub trait RenderableMetricValue {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],

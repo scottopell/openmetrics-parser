@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::self,
+    fmt,
     sync::Arc,
 };
 
@@ -287,7 +287,7 @@ where
 
         let mut res = String::new();
         for metric in self.metrics.iter() {
-            metric.render(&mut res, &self.family_name, &label_names)?;
+            metric.render(&mut res, &label_names)?;
         }
         Ok(res)
     }
@@ -314,7 +314,7 @@ where
         let label_names: Vec<&str> = self.label_names.iter().map(|s| s.as_str()).collect();
 
         for metric in self.metrics.iter() {
-            metric.render(f, &self.family_name, &label_names)?;
+            metric.render(f, &label_names)?;
         }
 
         Ok(())
@@ -388,7 +388,6 @@ impl RenderableMetricValue for HistogramBucket {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         _: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
@@ -408,8 +407,7 @@ impl RenderableMetricValue for HistogramBucket {
 
         write!(
             f,
-            "{}_bucket{} {}",
-            metric_name,
+            "_bucket{} {}",
             render_label_values(&label_names, &label_values),
             self.count
         )?;
@@ -436,27 +434,26 @@ impl RenderableMetricValue for HistogramValue {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
     ) -> fmt::Result {
         for bucket in self.buckets.iter() {
-            bucket.render(f, metric_name, timestamp, label_names, label_values)?;
+            bucket.render(f, timestamp, label_names, label_values)?;
         }
 
         let labels = render_label_values(label_names, label_values);
 
         if let Some(s) = self.sum {
-            writeln!(f, "{}_sum{} {}", metric_name, labels, s)?;
+            writeln!(f, "_sum{} {}", labels, s)?;
         }
 
         if let Some(c) = self.count {
-            writeln!(f, "{}_count{} {}", metric_name, labels, c)?;
+            writeln!(f, "_count{} {}", labels, c)?;
         }
 
         if let Some(c) = self.created {
-            writeln!(f, "{}_created{} {}", metric_name, labels, c)?;
+            writeln!(f, "_created{} {}", labels, c)?;
         }
 
         Ok(())
@@ -479,7 +476,6 @@ impl RenderableMetricValue for Quantile {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         _: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
@@ -499,8 +495,7 @@ impl RenderableMetricValue for Quantile {
 
         writeln!(
             f,
-            "{}{} {}",
-            metric_name,
+            "{} {}",
             render_label_values(&label_names, &label_values),
             self.value
         )
@@ -519,27 +514,26 @@ impl RenderableMetricValue for SummaryValue {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
     ) -> fmt::Result {
         for q in self.quantiles.iter() {
-            q.render(f, metric_name, timestamp, label_names, label_values)?;
+            q.render(f,timestamp, label_names, label_values)?;
         }
 
         let labels = render_label_values(label_names, label_values);
 
         if let Some(s) = self.sum {
-            writeln!(f, "{}_sum{} {}", metric_name, labels, s)?;
+            writeln!(f, "_sum{} {}", labels, s)?;
         }
 
         if let Some(s) = self.count {
-            writeln!(f, "{}_count{} {}", metric_name, labels, s)?;
+            writeln!(f, "_count{} {}", labels, s)?;
         }
 
         if let Some(s) = self.created {
-            writeln!(f, "{}_created{} {}", metric_name, labels, s)?;
+            writeln!(f, "_created{} {}", labels, s)?;
         }
 
         Ok(())
@@ -651,7 +645,6 @@ impl RenderableMetricValue for OpenMetricsValue {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
@@ -665,8 +658,7 @@ impl RenderableMetricValue for OpenMetricsValue {
             | OpenMetricsValue::StateSet(n) => {
                 writeln!(
                     f,
-                    "{}{} {}{}",
-                    metric_name,
+                    "{} {}{}",
                     render_label_values(label_names, label_values),
                     n,
                     timestamp_str
@@ -675,8 +667,7 @@ impl RenderableMetricValue for OpenMetricsValue {
             OpenMetricsValue::Counter(c) => {
                 write!(
                     f,
-                    "{}{} {}{}",
-                    metric_name,
+                    "{} {}{}",
                     render_label_values(label_names, label_values),
                     c.value,
                     timestamp_str
@@ -689,16 +680,15 @@ impl RenderableMetricValue for OpenMetricsValue {
             }
             OpenMetricsValue::Histogram(h) | OpenMetricsValue::GaugeHistogram(h) => {
                 // TODO: This is actually wrong for GaugeHistograms (they should have _gsum and _gcount), but I'm too lazy to fix this at the moment
-                h.render(f, metric_name, timestamp, label_names, label_values)
+                h.render(f, timestamp, label_names, label_values)
             }
             OpenMetricsValue::Summary(s) => {
-                s.render(f, metric_name, timestamp, label_names, label_values)
+                s.render(f, timestamp, label_names, label_values)
             }
             OpenMetricsValue::Info => {
                 writeln!(
                     f,
-                    "{}{} {} {}",
-                    metric_name,
+                    "{} {} {}",
                     render_label_values(label_names, label_values),
                     MetricNumber::Int(1),
                     timestamp_str
@@ -750,7 +740,6 @@ impl RenderableMetricValue for PrometheusValue {
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
         label_values: &[&str],
@@ -761,8 +750,7 @@ impl RenderableMetricValue for PrometheusValue {
         match self {
             PrometheusValue::Unknown(n) | PrometheusValue::Gauge(n) => writeln!(
                 f,
-                "{}{} {}{}",
-                metric_name,
+                "{} {}{}",
                 render_label_values(label_names, label_values),
                 n,
                 timestamp_str
@@ -770,8 +758,7 @@ impl RenderableMetricValue for PrometheusValue {
             PrometheusValue::Counter(c) => {
                 write!(
                     f,
-                    "{}{} {}{}",
-                    metric_name,
+                    "{} {}{}",
                     render_label_values(label_names, label_values),
                     c.value,
                     timestamp_str
@@ -783,10 +770,10 @@ impl RenderableMetricValue for PrometheusValue {
                 f.write_char('\n')
             }
             PrometheusValue::Histogram(h) => {
-                h.render(f, metric_name, timestamp, label_names, label_values)
+                h.render(f, timestamp, label_names, label_values)
             }
             PrometheusValue::Summary(s) => {
-                s.render(f, metric_name, timestamp, label_names, label_values)
+                s.render(f, timestamp, label_names, label_values)
             }
         }
     }
@@ -867,13 +854,11 @@ where
     fn render<W: fmt::Write>(
         &self,
         f: &mut W,
-        metric_name: &str,
         label_names: &[&str],
     ) -> fmt::Result {
         let values: Vec<&str> = self.label_values.iter().map(|s| s.as_str()).collect();
         self.value.render(
             f,
-            metric_name,
             self.timestamp.as_ref(),
             label_names,
             &values,
