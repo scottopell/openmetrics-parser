@@ -1,4 +1,3 @@
-use crate::prometheus::parse_prometheus;
 
 #[test]
 fn test_label_sets() {
