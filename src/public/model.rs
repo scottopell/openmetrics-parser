@@ -276,6 +276,16 @@ where
 
         Ok(())
     }
+
+    pub fn metrics_as_string(&self) -> Result<String, fmt::Error> {
+        let label_names: Vec<&str> = self.label_names.iter().map(|s| s.as_str()).collect();
+
+        let mut res = String::new();
+        for metric in self.metrics.iter() {
+            metric.render(&mut res, &self.family_name, &label_names)?;
+        }
+        Ok(res)
+    }
 }
 
 impl<TypeSet, ValueType> fmt::Display for MetricFamily<TypeSet, ValueType>
@@ -373,9 +383,9 @@ pub struct HistogramBucket {
 }
 
 impl RenderableMetricValue for HistogramBucket {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         _: Option<&Timestamp>,
         label_names: &[&str],
@@ -421,9 +431,9 @@ pub struct HistogramValue {
 }
 
 impl RenderableMetricValue for HistogramValue {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
@@ -464,9 +474,9 @@ pub struct Quantile {
 }
 
 impl RenderableMetricValue for Quantile {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         _: Option<&Timestamp>,
         label_names: &[&str],
@@ -504,9 +514,9 @@ pub struct SummaryValue {
 }
 
 impl RenderableMetricValue for SummaryValue {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
@@ -636,9 +646,9 @@ pub enum OpenMetricsValue {
 }
 
 impl RenderableMetricValue for OpenMetricsValue {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
@@ -733,9 +743,9 @@ pub enum PrometheusValue {
 }
 
 impl RenderableMetricValue for PrometheusValue {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
@@ -836,9 +846,9 @@ where
         ))
     }
 
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         label_names: &[&str],
     ) -> fmt::Result {

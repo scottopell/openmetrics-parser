@@ -35,9 +35,9 @@ where
 }
 
 pub trait RenderableMetricValue {
-    fn render(
+    fn render<W: fmt::Write>(
         &self,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut W,
         metric_name: &str,
         timestamp: Option<&Timestamp>,
         label_names: &[&str],
